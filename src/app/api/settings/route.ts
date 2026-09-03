@@ -1,9 +1,9 @@
-﻿import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
 
-export const defaultAppSettings = {
+const defaultAppSettings = {
   company: {
     name: "SP SURYA",
     tagline: "Empaneled Vendor - PM Surya Ghar Muft Bijli Yojana",
