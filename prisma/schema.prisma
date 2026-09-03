@@ -1,0 +1,158 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String
+  password  String   @default("spsurya123")
+  role      String   @default("SALES_MANAGER")
+  phone     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Lead {
+  id              String    @id @default(cuid())
+  customerName    String
+  contactNumber   String
+  email           String?
+  consumerNumber  String?
+  location        String
+  district        String    @default("Balasore")
+  pin             String?
+  category        String    @default("RESIDENTIAL")
+  capacityKw      Float     @default(3.0)
+  phase           String    @default("SINGLE_PHASE")
+  brandPreference String    @default("WAAREE")
+  source          String    @default("PM Surya Ghar Portal")
+  status          String    @default("NEW")
+  notes           String?
+  followUpDate    DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  quotations      Quotation[]
+
+  @@index([contactNumber])
+  @@index([status])
+}
+
+model Customer {
+  id             String    @id @default(cuid())
+  name           String
+  mobile         String
+  email          String?
+  consumerNumber String?
+  village        String
+  district       String    @default("Balasore")
+  pin            String
+  phase          String    @default("SINGLE_PHASE")
+  discom         String    @default("TPNODL")
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  quotations     Quotation[]
+  installations  Installation[]
+
+  @@index([mobile])
+}
+
+model Quotation {
+  id               String    @id @default(cuid())
+  quotationNumber  String    @unique
+  category         String    @default("RESIDENTIAL")
+  brand            String    @default("WAAREE")
+  
+  customerId       String?
+  customer         Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  
+  leadId           String?
+  lead             Lead?     @relation(fields: [leadId], references: [id], onDelete: SetNull)
+  
+  customerName     String
+  contactNumber    String
+  email            String?
+  consumerNumber   String?
+  location         String
+  district         String    @default("Balasore")
+  pin              String    @default("756019")
+  
+  capacityKw       Float     @default(3.0)
+  phase            String    @default("SINGLE_PHASE")
+  moduleCount      Int       @default(6)
+  moduleWattage    Int       @default(580)
+  
+  baseCost         Float
+  gstPercent       Float     @default(5.0)
+  gstAmount        Float
+  grandTotal       Float
+  
+  centralSubsidy   Float     @default(78000)
+  stateSubsidy     Float     @default(60000)
+  netPayable       Float
+  
+  boqData          String
+  bankDetails      String?
+  termsData        String?
+  demandNoteAmount Float     @default(3747)
+  validityDays     Int       @default(15)
+  status           String    @default("DRAFT")
+  
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  @@index([quotationNumber])
+}
+
+model Installation {
+  id                  String    @id @default(cuid())
+  customerName        String
+  contactNumber       String
+  email               String?
+  consumerNumber      String?
+  location            String
+  district            String    @default("Balasore")
+  category            String    @default("RESIDENTIAL")
+  
+  projectSizeKw       Float
+  brand               String    @default("WAAREE")
+  phase               String    @default("Single Phase")
+  
+  projectCost         Float
+  gnMeterInclusion    String    @default("Including cost")
+  paymentType         String    @default("Loan SBI")
+  
+  demandNoteCharges   Float     @default(3747)
+  bankQuotation       Float
+  invoiceCost         Float
+  
+  subsidyStatus       String    @default("Pending")
+  
+  installationDate    DateTime?
+  meterConnectionDate DateTime?
+  nextMaintenanceDate DateTime?
+  
+  remarks             String?
+  
+  customerId          String?
+  customer            Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  @@index([contactNumber])
+  @@index([subsidyStatus])
+}
+model Setting {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  value     String
+  updatedAt DateTime @updatedAt
+}
