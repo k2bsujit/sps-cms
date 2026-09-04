@@ -5,15 +5,18 @@ import { Lead, SolarBrand, SystemCategory, PhaseType, LeadStatus } from "@/types
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { AlertCircle, CheckCircle2, Zap, FileText, Phone, User, MapPin } from "lucide-react";
+import { useRouter } from "next/navigation";
 
 interface Props {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (lead: Partial<Lead>) => Promise<void>;
+  onSave: (lead: Partial<Lead>) => Promise<Lead | void>;
   initialData?: Lead | null;
 }
 
 export const LeadModal: React.FC<Props> = ({ isOpen, onClose, onSave, initialData }) => {
+  const router = useRouter();
   const [formData, setFormData] = useState<Partial<Lead>>({
     customerName: "",
     contactNumber: "",
@@ -21,7 +24,7 @@ export const LeadModal: React.FC<Props> = ({ isOpen, onClose, onSave, initialDat
     consumerNumber: "",
     location: "",
     district: "Balasore",
-    pin: "756019",
+    pin: "756040",
     category: "RESIDENTIAL",
     capacityKw: 3.0,
     phase: "SINGLE_PHASE",
@@ -33,8 +36,10 @@ export const LeadModal: React.FC<Props> = ({ isOpen, onClose, onSave, initialDat
   });
 
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   useEffect(() => {
+    setErrorMsg(null);
     if (initialData) {
       setFormData({
         ...initialData,
@@ -50,7 +55,7 @@ export const LeadModal: React.FC<Props> = ({ isOpen, onClose, onSave, initialDat
         consumerNumber: "",
         location: "",
         district: "Balasore",
-        pin: "756019",
+        pin: "756040",
         category: "RESIDENTIAL",
         capacityKw: 3.0,
         phase: "SINGLE_PHASE",
@@ -63,20 +68,51 @@ export const LeadModal: React.FC<Props> = ({ isOpen, onClose, onSave, initialDat
     }
   }, [initialData, isOpen]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!formData.customerName || !formData.contactNumber || !formData.location) {
-      alert("Please fill in Customer Name, Contact Number, and Location.");
-      return;
+  const validate = (): boolean => {
+    if (!formData.customerName || formData.customerName.trim().length < 2) {
+      setErrorMsg("Please enter a valid Customer Name.");
+      return false;
     }
+    const cleanPhone = (formData.contactNumber || "").replace(/\D/g, "");
+    if (cleanPhone.length < 10) {
+      setErrorMsg("Please enter a valid 10-digit mobile number.");
+      return false;
+    }
+    if (!formData.location || formData.location.trim().length < 2) {
+      setErrorMsg("Please enter the Village or Town address.");
+      return false;
+    }
+    return true;
+  };
+
+  const handleSave = async (andCreateQuote = false) => {
+    setErrorMsg(null);
+    if (!validate()) return;
 
     setIsSubmitting(true);
     try {
-      await onSave(formData);
+      const saved = await onSave(formData);
       onClose();
-    } catch (err) {
+
+      if (andCreateQuote) {
+        const params = new URLSearchParams({
+          name: formData.customerName || "",
+          mobile: formData.contactNumber || "",
+          email: formData.email || "",
+          consumerNumber: formData.consumerNumber || "",
+          village: formData.location || "",
+          district: formData.district || "Balasore",
+          pin: formData.pin || "756040",
+          capacity: String(formData.capacityKw || 3),
+          phase: formData.phase || "SINGLE_PHASE",
+          brand: formData.brandPreference || "WAAREE",
+          category: formData.category || "RESIDENTIAL",
+        });
+        router.push(`/quotations?${params.toString()}`);
+      }
+    } catch (err: any) {
       console.error(err);
-      alert("Failed to save lead.");
+      setErrorMsg(err.message || "Failed to save lead. Please try again.");
     } finally {
       setIsSubmitting(false);
     }
@@ -86,7 +122,8 @@ export const LeadModal: React.FC<Props> = ({ isOpen, onClose, onSave, initialDat
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="text-xl font-bold text-slate-900">
+          <DialogTitle className="text-xl font-bold text-slate-900 flex items-center gap-2">
+            <User className="w-5 h-5 text-amber-500" />
             {initialData ? "Edit Lead Details" : "Add New Solar Lead"}
           </DialogTitle>
           <DialogDescription>
@@ -94,7 +131,14 @@ export const LeadModal: React.FC<Props> = ({ isOpen, onClose, onSave, initialDat
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-4 pt-2">
+        {errorMsg && (
+          <div className="p-3 bg-red-50 border border-red-200 text-red-700 text-xs rounded-lg flex items-center gap-2 animate-fadeIn">
+            <AlertCircle className="w-4 h-4 shrink-0 text-red-600" />
+            <span>{errorMsg}</span>
+          </div>
+        )}
+
+        <form onSubmit={(e) => { e.preventDefault(); handleSave(false); }} className="space-y-4 pt-2">
           {/* Customer Basic Info */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-1">
@@ -102,7 +146,7 @@ export const LeadModal: React.FC<Props> = ({ isOpen, onClose, onSave, initialDat
               <Input
                 value={formData.customerName || ""}
                 onChange={(e) => setFormData({ ...formData, customerName: e.target.value })}
-                placeholder="e.g. ADITYA KUMAR BARIK"
+                placeholder="e.g. NARENDRA KUMAR NAYAK"
                 required
               />
             </div>
@@ -111,15 +155,15 @@ export const LeadModal: React.FC<Props> = ({ isOpen, onClose, onSave, initialDat
               <label className="text-xs font-semibold text-slate-700">Mobile Number *</label>
               <Input
                 value={formData.contactNumber || ""}
-                onChange={(e) => setFormData({ ...formData, contactNumber: e.target.value })}
-                placeholder="e.g. 9437102938"
+                onChange={(e) => setFormData({ ...formData, contactNumber: e.target.value.replace(/\D/g, "").slice(0, 10) })}
+                placeholder="e.g. 9810155834"
                 maxLength={10}
                 required
               />
             </div>
           </div>
 
-          {/* Optional Email & Consumer Number (Non-mandatory as requested) */}
+          {/* Optional Email & Consumer Number */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-1">
               <label className="text-xs font-semibold text-slate-700 flex items-center justify-between">
@@ -129,7 +173,7 @@ export const LeadModal: React.FC<Props> = ({ isOpen, onClose, onSave, initialDat
               <Input
                 value={formData.consumerNumber || ""}
                 onChange={(e) => setFormData({ ...formData, consumerNumber: e.target.value })}
-                placeholder="e.g. TPNODL-BLS-88349"
+                placeholder="e.g. 324322030589 (TPNODL)"
               />
             </div>
 
@@ -154,10 +198,11 @@ export const LeadModal: React.FC<Props> = ({ isOpen, onClose, onSave, initialDat
               <Input
                 value={formData.location || ""}
                 onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-                placeholder="e.g. Bartana, Somanathpur, Khantapada"
+                placeholder="e.g. Sergarh, Nilgiri"
                 required
               />
             </div>
+
             <div className="space-y-1">
               <label className="text-xs font-semibold text-slate-700">District *</label>
               <Input
@@ -169,17 +214,17 @@ export const LeadModal: React.FC<Props> = ({ isOpen, onClose, onSave, initialDat
             </div>
           </div>
 
-          {/* Project Technical Sizing & Category */}
+          {/* Category & Capacity & Phase */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div className="space-y-1">
               <label className="text-xs font-semibold text-slate-700">Template / Category</label>
               <select
-                className="flex h-10 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
-                value={formData.category || "RESIDENTIAL"}
+                value={formData.category}
                 onChange={(e) => setFormData({ ...formData, category: e.target.value as SystemCategory })}
+                className="w-full h-9 rounded-md border border-slate-300 bg-white px-3 text-xs text-slate-900 focus:ring-1 focus:ring-amber-500"
               >
                 <option value="RESIDENTIAL">Residential (PM Surya Ghar)</option>
-                <option value="COMMERCIAL">Commercial & Industrial (C&I)</option>
+                <option value="COMMERCIAL">Commercial & Industrial</option>
               </select>
             </div>
 
@@ -188,17 +233,18 @@ export const LeadModal: React.FC<Props> = ({ isOpen, onClose, onSave, initialDat
               <Input
                 type="number"
                 step="0.5"
-                value={formData.capacityKw || 3.0}
-                onChange={(e) => setFormData({ ...formData, capacityKw: parseFloat(e.target.value) || 3.0 })}
+                min="1"
+                value={formData.capacityKw || 3}
+                onChange={(e) => setFormData({ ...formData, capacityKw: parseFloat(e.target.value) || 3 })}
               />
             </div>
 
             <div className="space-y-1">
               <label className="text-xs font-semibold text-slate-700">Electrical Phase</label>
               <select
-                className="flex h-10 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
-                value={formData.phase || "SINGLE_PHASE"}
+                value={formData.phase}
                 onChange={(e) => setFormData({ ...formData, phase: e.target.value as PhaseType })}
+                className="w-full h-9 rounded-md border border-slate-300 bg-white px-3 text-xs text-slate-900 focus:ring-1 focus:ring-amber-500"
               >
                 <option value="SINGLE_PHASE">Single Phase (230V)</option>
                 <option value="THREE_PHASE">Three Phase (415V)</option>
@@ -206,14 +252,14 @@ export const LeadModal: React.FC<Props> = ({ isOpen, onClose, onSave, initialDat
             </div>
           </div>
 
-          {/* Brand Preference & Source */}
+          {/* Brand Preference & Source & Status */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div className="space-y-1">
               <label className="text-xs font-semibold text-slate-700">Brand Preference</label>
               <select
-                className="flex h-10 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-amber-500"
-                value={formData.brandPreference || "WAAREE"}
+                value={formData.brandPreference}
                 onChange={(e) => setFormData({ ...formData, brandPreference: e.target.value as SolarBrand })}
+                className="w-full h-9 rounded-md border border-slate-300 bg-white px-3 text-xs text-slate-900 focus:ring-1 focus:ring-amber-500"
               >
                 <option value="WAAREE">WAAREE</option>
                 <option value="TATA Solar">TATA Solar</option>
@@ -222,37 +268,37 @@ export const LeadModal: React.FC<Props> = ({ isOpen, onClose, onSave, initialDat
                 <option value="UTL Solar">UTL Solar</option>
                 <option value="Vikram Solar">Vikram Solar</option>
                 <option value="Goldi Solar">Goldi Solar</option>
-                <option value="Other">Other Tier-1</option>
+                <option value="Other">Other Tier 1</option>
               </select>
             </div>
 
             <div className="space-y-1">
               <label className="text-xs font-semibold text-slate-700">Lead Source</label>
               <select
-                className="flex h-10 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
-                value={formData.source || "PM Surya Ghar Portal"}
+                value={formData.source}
                 onChange={(e) => setFormData({ ...formData, source: e.target.value })}
+                className="w-full h-9 rounded-md border border-slate-300 bg-white px-3 text-xs text-slate-900 focus:ring-1 focus:ring-amber-500"
               >
                 <option value="PM Surya Ghar Portal">PM Surya Ghar Portal</option>
-                <option value="Direct Walk-in">Direct Walk-in / Office</option>
-                <option value="Referral">Customer Referral</option>
-                <option value="Field Campaign">Field Campaign / Camp</option>
-                <option value="Social Media">Social Media / Website</option>
+                <option value="Direct Walk-in">Direct Walk-in</option>
+                <option value="Field Campaign">Field Campaign</option>
+                <option value="Referral">Referral</option>
+                <option value="Website">Website Form</option>
               </select>
             </div>
 
             <div className="space-y-1">
               <label className="text-xs font-semibold text-slate-700">Pipeline Status</label>
               <select
-                className="flex h-10 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-amber-500"
-                value={formData.status || "NEW"}
+                value={formData.status}
                 onChange={(e) => setFormData({ ...formData, status: e.target.value as LeadStatus })}
+                className="w-full h-9 rounded-md border border-slate-300 bg-white px-3 text-xs text-slate-900 focus:ring-1 focus:ring-amber-500"
               >
                 <option value="NEW">New Lead</option>
                 <option value="CONTACTED">Contacted</option>
                 <option value="SURVEY_SCHEDULED">Survey Scheduled</option>
                 <option value="QUOTATION_CREATED">Quotation Created</option>
-                <option value="WON">Closed / Won</option>
+                <option value="WON">Won (Converted)</option>
                 <option value="LOST">Lost</option>
               </select>
             </div>
@@ -274,18 +320,41 @@ export const LeadModal: React.FC<Props> = ({ isOpen, onClose, onSave, initialDat
               <Input
                 value={formData.notes || ""}
                 onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                placeholder="e.g. Roof shadow free, wants loan support."
+                placeholder="e.g. Roof shadow free, wants loan support"
               />
             </div>
           </div>
 
-          <DialogFooter className="pt-3 border-t border-slate-100">
-            <Button type="button" variant="outline" onClick={onClose} disabled={isSubmitting}>
+          <DialogFooter className="gap-2 pt-3 border-t border-slate-100 sm:justify-between flex-wrap">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={onClose}
+              className="text-xs"
+            >
               Cancel
             </Button>
-            <Button type="submit" disabled={isSubmitting} className="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold">
-              {isSubmitting ? "Saving Lead..." : initialData ? "Update Lead" : "Add Lead"}
-            </Button>
+
+            <div className="flex items-center gap-2">
+              <Button
+                type="button"
+                variant="secondary"
+                disabled={isSubmitting}
+                onClick={() => handleSave(true)}
+                className="bg-amber-50 text-amber-900 border border-amber-300 hover:bg-amber-100 text-xs font-semibold"
+              >
+                <FileText className="w-3.5 h-3.5 mr-1 text-amber-600" />
+                Save & Create Quote
+              </Button>
+
+              <Button
+                type="submit"
+                disabled={isSubmitting}
+                className="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs"
+              >
+                {isSubmitting ? "Saving Lead..." : initialData ? "Update Lead" : "Add Lead"}
+              </Button>
+            </div>
           </DialogFooter>
         </form>
       </DialogContent>

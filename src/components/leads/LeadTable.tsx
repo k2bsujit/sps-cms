@@ -20,6 +20,10 @@ import {
   Zap,
   ArrowRight,
   RotateCcw,
+  MessageSquare,
+  CheckCircle2,
+  AlertCircle,
+  ExternalLink,
 } from "lucide-react";
 import { LeadModal } from "./LeadModal";
 import Link from "next/link";
@@ -35,8 +39,14 @@ export const LeadTable: React.FC = () => {
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingLead, setEditingLead] = useState<Lead | null>(null);
+  const [feedbackMsg, setFeedbackMsg] = useState<{ text: string; type: "success" | "error" } | null>(null);
 
   const router = useRouter();
+
+  const showNotification = (text: string, type: "success" | "error" = "success") => {
+    setFeedbackMsg({ text, type });
+    setTimeout(() => setFeedbackMsg(null), 4000);
+  };
 
   const fetchLeads = async () => {
     setIsLoading(true);
@@ -56,6 +66,18 @@ export const LeadTable: React.FC = () => {
   useEffect(() => {
     fetchLeads();
   }, []);
+
+  const statusCounts = useMemo(() => {
+    return {
+      ALL: leads.length,
+      NEW: leads.filter((l) => l.status === "NEW").length,
+      CONTACTED: leads.filter((l) => l.status === "CONTACTED").length,
+      SURVEY_SCHEDULED: leads.filter((l) => l.status === "SURVEY_SCHEDULED").length,
+      QUOTATION_CREATED: leads.filter((l) => l.status === "QUOTATION_CREATED").length,
+      WON: leads.filter((l) => l.status === "WON").length,
+      LOST: leads.filter((l) => l.status === "LOST").length,
+    };
+  }, [leads]);
 
   const filteredLeads = useMemo(() => {
     return leads.filter((lead) => {
@@ -89,8 +111,10 @@ export const LeadTable: React.FC = () => {
     if (res.ok) {
       setEditingLead(null);
       await fetchLeads();
+      showNotification(isEdit ? "Lead updated successfully!" : "New lead added to pipeline!");
     } else {
-      throw new Error("Failed to save lead");
+      const errData = await res.json().catch(() => ({}));
+      throw new Error(errData.error || "Failed to save lead");
     }
   };
 
@@ -100,15 +124,15 @@ export const LeadTable: React.FC = () => {
       const res = await fetch(`/api/leads?id=${id}`, { method: "DELETE" });
       if (res.ok) {
         setLeads((prev) => prev.filter((l) => l.id !== id));
+        showNotification(`Lead for "${name}" deleted.`);
       }
     } catch (err) {
       console.error(err);
-      alert("Error deleting lead.");
+      showNotification("Error deleting lead.", "error");
     }
   };
 
   const handleCreateQuotationForLead = (lead: Lead) => {
-    // Navigate to /quotations with query params to prefill the exact quotation builder
     const params = new URLSearchParams({
       leadId: lead.id,
       name: lead.customerName,
@@ -117,7 +141,7 @@ export const LeadTable: React.FC = () => {
       consumerNumber: lead.consumerNumber || "",
       village: lead.location,
       district: lead.district || "Balasore",
-      pin: lead.pin || "756019",
+      pin: lead.pin || "756040",
       capacity: String(lead.capacityKw || 3),
       phase: lead.phase,
       brand: lead.brandPreference,
@@ -145,6 +169,67 @@ export const LeadTable: React.FC = () => {
 
   return (
     <div className="space-y-6">
+      {/* Toast Feedback Notification */}
+      {feedbackMsg && (
+        <div
+          className={`p-3 rounded-lg border text-xs flex items-center justify-between shadow-sm animate-fadeIn ${
+            feedbackMsg.type === "success"
+              ? "bg-emerald-50 border-emerald-200 text-emerald-800"
+              : "bg-red-50 border-red-200 text-red-800"
+          }`}
+        >
+          <div className="flex items-center gap-2">
+            {feedbackMsg.type === "success" ? (
+              <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+            ) : (
+              <AlertCircle className="w-4 h-4 text-red-600" />
+            )}
+            <span className="font-semibold">{feedbackMsg.text}</span>
+          </div>
+          <button onClick={() => setFeedbackMsg(null)} className="text-slate-400 hover:text-slate-600">
+            ×
+          </button>
+        </div>
+      )}
+
+      {/* Status Filter Pills Bar */}
+      <div className="flex flex-wrap items-center gap-2">
+        {(
+          [
+            { key: "ALL", label: "All Leads" },
+            { key: "NEW", label: "New Leads" },
+            { key: "CONTACTED", label: "Contacted" },
+            { key: "SURVEY_SCHEDULED", label: "Survey Scheduled" },
+            { key: "QUOTATION_CREATED", label: "Quote Created" },
+            { key: "WON", label: "Won" },
+            { key: "LOST", label: "Lost" },
+          ] as const
+        ).map((pill) => {
+          const active = selectedStatus === pill.key;
+          const count = (statusCounts as any)[pill.key] || 0;
+          return (
+            <button
+              key={pill.key}
+              onClick={() => setSelectedStatus(pill.key)}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                active
+                  ? "bg-amber-500 text-slate-950 shadow-sm"
+                  : "bg-white text-slate-600 hover:bg-slate-100 border border-slate-200"
+              }`}
+            >
+              <span>{pill.label}</span>
+              <span
+                className={`text-[10px] px-1.5 py-0.2 rounded-full font-extrabold ${
+                  active ? "bg-slate-950 text-amber-300" : "bg-slate-100 text-slate-500"
+                }`}
+              >
+                {count}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+
       {/* Control Bar */}
       <Card className="border border-slate-200 shadow-sm bg-white">
         <CardContent className="p-4 space-y-4">
@@ -153,7 +238,7 @@ export const LeadTable: React.FC = () => {
             <div className="relative w-full lg:w-96">
               <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
               <Input
-                placeholder="Search by customer, mobile, email, consumer no..."
+                placeholder="Search customer, mobile, location, consumer no..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pl-9"
@@ -203,21 +288,6 @@ export const LeadTable: React.FC = () => {
               <option value="COMMERCIAL">Commercial & Industrial</option>
             </select>
 
-            {/* Status Filter */}
-            <select
-              value={selectedStatus}
-              onChange={(e) => setSelectedStatus(e.target.value)}
-              className="h-8 rounded-md border border-slate-300 bg-white px-2.5 text-xs text-slate-700 focus:ring-1 focus:ring-amber-500"
-            >
-              <option value="ALL">All Stages</option>
-              <option value="NEW">New Lead</option>
-              <option value="CONTACTED">Contacted</option>
-              <option value="SURVEY_SCHEDULED">Survey Scheduled</option>
-              <option value="QUOTATION_CREATED">Quotation Created</option>
-              <option value="WON">Closed Won</option>
-              <option value="LOST">Lost</option>
-            </select>
-
             {/* Brand Filter */}
             <select
               value={selectedBrand}
@@ -230,177 +300,197 @@ export const LeadTable: React.FC = () => {
               <option value="Eastman">Eastman</option>
               <option value="Adani Solar">Adani Solar</option>
               <option value="UTL Solar">UTL Solar</option>
-              <option value="Vikram Solar">Vikram Solar</option>
-              <option value="Goldi Solar">Goldi Solar</option>
             </select>
 
-            {(searchTerm || selectedStatus !== "ALL" || selectedBrand !== "ALL" || selectedCategory !== "ALL") && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => {
-                  setSearchTerm("");
-                  setSelectedStatus("ALL");
-                  setSelectedBrand("ALL");
-                  setSelectedCategory("ALL");
-                }}
-                className="h-8 text-xs text-slate-500 hover:text-red-600 px-2"
-              >
-                Clear
-              </Button>
-            )}
-
-            <div className="ml-auto text-slate-500 font-medium">
+            <div className="ml-auto text-xs text-slate-500">
               Showing <span className="font-bold text-slate-900">{filteredLeads.length}</span> of {leads.length} leads
             </div>
           </div>
         </CardContent>
       </Card>
 
-      {/* Leads Table Grid */}
-      <Card className="border border-slate-200 shadow-sm overflow-hidden bg-white">
+      {/* Leads Table */}
+      <Card className="border border-slate-200 shadow-sm bg-white overflow-hidden">
         <div className="overflow-x-auto">
           <Table>
             <TableHeader>
-              <TableRow className="bg-slate-900 text-white hover:bg-slate-900">
-                <TableHead className="text-white text-xs font-bold py-3.5">Customer & Contacts</TableHead>
-                <TableHead className="text-white text-xs font-bold py-3.5">Location & District</TableHead>
-                <TableHead className="text-white text-xs font-bold py-3.5">Category & Size</TableHead>
-                <TableHead className="text-white text-xs font-bold py-3.5">Brand & Phase</TableHead>
-                <TableHead className="text-white text-xs font-bold py-3.5">Source & Follow-up</TableHead>
-                <TableHead className="text-white text-xs font-bold py-3.5">Pipeline Status</TableHead>
-                <TableHead className="text-white text-xs font-bold py-3.5 text-right">Actions</TableHead>
+              <TableRow className="bg-slate-100/70 text-xs text-slate-700">
+                <TableHead>Customer & Contacts</TableHead>
+                <TableHead>Location</TableHead>
+                <TableHead>Capacity</TableHead>
+                <TableHead>Brand Make</TableHead>
+                <TableHead>Source & Follow-up</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {isLoading ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center py-12 text-slate-500">
-                    Loading CRM leads...
+                  <TableCell colSpan={7} className="text-center py-12 text-slate-500 space-y-2">
+                    <p className="text-xs">Loading leads from database...</p>
                   </TableCell>
                 </TableRow>
               ) : filteredLeads.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={7} className="text-center py-12 text-slate-500 space-y-2">
-                    <p className="text-sm font-semibold text-slate-700">No leads found</p>
-                    <p className="text-xs text-slate-400">Click "Add New Lead" to register a customer inquiry.</p>
+                    <p className="text-sm font-semibold text-slate-700">No matching leads found</p>
+                    <p className="text-xs text-slate-400">Click "Add New Lead" to capture a solar inquiry.</p>
                   </TableCell>
                 </TableRow>
               ) : (
-                filteredLeads.map((lead, idx) => (
-                  <TableRow
-                    key={lead.id}
-                    className={`text-xs ${idx % 2 === 1 ? "bg-slate-50/50" : "bg-white"} hover:bg-amber-50/40`}
-                  >
-                    {/* Customer & Contacts */}
-                    <TableCell>
-                      <div className="font-bold text-slate-900">{lead.customerName}</div>
-                      <div className="text-[11px] text-slate-600 font-mono flex items-center gap-1 mt-0.5">
-                        <Phone className="w-3 h-3 text-slate-400" /> +91 {lead.contactNumber}
-                      </div>
-                      {lead.email && (
-                        <div className="text-[10px] text-slate-500 flex items-center gap-1">
-                          <Mail className="w-2.5 h-2.5 text-slate-400" /> {lead.email}
+                filteredLeads.map((lead, idx) => {
+                  const cleanPhone = (lead.contactNumber || "").replace(/\D/g, "");
+                  const waMessage = encodeURIComponent(
+                    `Namaskar ${lead.customerName} ji! Greetings from SP Surya Solar Solutions (Nilagiri/Balasore). We received your solar rooftop inquiry for ${lead.capacityKw} kW (${lead.brandPreference}). We would be glad to assist you with the PM Surya Ghar ₹78,000 + Odisha State ₹60,000 subsidy.`
+                  );
+
+                  return (
+                    <TableRow
+                      key={lead.id}
+                      className={`text-xs ${idx % 2 === 1 ? "bg-slate-50/50" : "bg-white"} hover:bg-amber-50/40`}
+                    >
+                      {/* Customer & Contacts */}
+                      <TableCell>
+                        <div className="font-bold text-slate-900">{lead.customerName}</div>
+                        <div className="text-[11px] text-slate-600 font-mono flex items-center gap-1 mt-0.5">
+                          <Phone className="w-3 h-3 text-slate-400" /> +91 {lead.contactNumber}
                         </div>
-                      )}
-                      {lead.consumerNumber && (
-                        <div className="text-[10px] font-mono text-amber-800 bg-amber-50/80 px-1 rounded inline-block mt-0.5">
-                          CA: {lead.consumerNumber}
+                        {lead.email && (
+                          <div className="text-[10px] text-slate-500 flex items-center gap-1">
+                            <Mail className="w-2.5 h-2.5 text-slate-400" /> {lead.email}
+                          </div>
+                        )}
+                        {lead.consumerNumber && (
+                          <div className="text-[10px] font-mono text-amber-800 bg-amber-50/80 px-1 rounded inline-block mt-0.5">
+                            CA: {lead.consumerNumber}
+                          </div>
+                        )}
+                      </TableCell>
+
+                      {/* Location */}
+                      <TableCell>
+                        <div className="font-medium text-slate-800">{lead.location}</div>
+                        <div className="text-[10px] text-slate-500">
+                          {lead.district} {lead.pin && `(${lead.pin})`}
                         </div>
-                      )}
-                    </TableCell>
+                      </TableCell>
 
-                    {/* Location */}
-                    <TableCell>
-                      <div className="font-medium text-slate-800">{lead.location}</div>
-                      <div className="text-[10px] text-slate-500">{lead.district} {lead.pin && `(${lead.pin})`}</div>
-                    </TableCell>
-
-                    {/* Category & Size */}
-                    <TableCell>
-                      <div className="font-bold text-slate-900 flex items-center gap-1">
-                        <Zap className="w-3.5 h-3.5 text-amber-500" />
-                        {lead.capacityKw} kW
-                      </div>
-                      <Badge
-                        variant={lead.category === "RESIDENTIAL" ? "default" : "secondary"}
-                        className="text-[9px] px-1.5 py-0 mt-0.5"
-                      >
-                        {lead.category === "RESIDENTIAL" ? "Residential" : "Commercial"}
-                      </Badge>
-                    </TableCell>
-
-                    {/* Brand & Phase */}
-                    <TableCell>
-                      <div className="font-semibold text-slate-900 text-amber-700">{lead.brandPreference}</div>
-                      <div className="text-[10px] text-slate-500">
-                        {lead.phase === "SINGLE_PHASE" ? "1-Phase (230V)" : "3-Phase (415V)"}
-                      </div>
-                    </TableCell>
-
-                    {/* Source & Follow-up */}
-                    <TableCell>
-                      <div className="text-slate-700 font-medium">{lead.source}</div>
-                      {lead.followUpDate ? (
-                        <div className="text-[10px] text-emerald-700 flex items-center gap-1 font-semibold mt-0.5">
-                          <Calendar className="w-2.5 h-2.5" /> Next: {lead.followUpDate}
+                      {/* Category & Size */}
+                      <TableCell>
+                        <div className="font-bold text-slate-900 flex items-center gap-1">
+                          <Zap className="w-3.5 h-3.5 text-amber-500" />
+                          {lead.capacityKw} kW
                         </div>
-                      ) : (
-                        <div className="text-[10px] text-slate-400">No date set</div>
-                      )}
-                    </TableCell>
+                        <Badge
+                          variant={lead.category === "RESIDENTIAL" ? "default" : "secondary"}
+                          className="text-[9px] px-1.5 py-0 mt-0.5"
+                        >
+                          {lead.category === "RESIDENTIAL" ? "Residential" : "Commercial"}
+                        </Badge>
+                      </TableCell>
 
-                    {/* Pipeline Status */}
-                    <TableCell>
-                      <Badge variant={getStatusBadgeVariant(lead.status)} className="text-[10px] px-2 py-0.5">
-                        {lead.status.replace("_", " ")}
-                      </Badge>
-                    </TableCell>
+                      {/* Brand & Phase */}
+                      <TableCell>
+                        <div className="font-semibold text-slate-900 text-amber-700">{lead.brandPreference}</div>
+                        <div className="text-[10px] text-slate-500">
+                          {lead.phase === "SINGLE_PHASE" ? "1-Phase (230V)" : "3-Phase (415V)"}
+                        </div>
+                      </TableCell>
 
-                    {/* Actions */}
-                    <TableCell className="text-right">
-                      <div className="flex items-center justify-end gap-1.5">
-                        <Button
-                          size="sm"
-                          onClick={() => handleCreateQuotationForLead(lead)}
-                          className="h-7 text-[11px] bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold px-2.5"
-                          title="Generate quotation with pre-populated details"
-                        >
-                          <FileText className="w-3 h-3 mr-1" />
-                          Quote
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => {
-                            setEditingLead(lead);
-                            setIsModalOpen(true);
-                          }}
-                          className="h-7 w-7 text-slate-600 hover:text-amber-600"
-                          title="Edit lead"
-                        >
-                          <Edit2 className="w-3.5 h-3.5" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleDeleteLead(lead.id, lead.customerName)}
-                          className="h-7 w-7 text-slate-600 hover:text-red-600"
-                          title="Delete lead"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))
+                      {/* Source & Follow-up */}
+                      <TableCell>
+                        <div className="text-slate-700 font-medium">{lead.source}</div>
+                        {lead.followUpDate ? (
+                          <div className="text-[10px] text-emerald-700 flex items-center gap-1 font-semibold mt-0.5">
+                            <Calendar className="w-2.5 h-2.5" /> Next: {lead.followUpDate}
+                          </div>
+                        ) : (
+                          <div className="text-[10px] text-slate-400">No date set</div>
+                        )}
+                      </TableCell>
+
+                      {/* Pipeline Status */}
+                      <TableCell>
+                        <Badge variant={getStatusBadgeVariant(lead.status)} className="text-[10px] px-2 py-0.5">
+                          {lead.status.replace("_", " ")}
+                        </Badge>
+                      </TableCell>
+
+                      {/* Actions */}
+                      <TableCell className="text-right">
+                        <div className="flex items-center justify-end gap-1.5">
+                          {/* WhatsApp Chat Button */}
+                          {cleanPhone.length >= 10 && (
+                            <a
+                              href={`https://wa.me/91${cleanPhone}?text=${waMessage}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center justify-center h-7 w-7 rounded-md bg-emerald-50 text-emerald-600 hover:bg-emerald-100 hover:text-emerald-700 border border-emerald-200"
+                              title="Chat on WhatsApp"
+                            >
+                              <MessageSquare className="w-3.5 h-3.5" />
+                            </a>
+                          )}
+
+                          {/* Direct Call Button */}
+                          {cleanPhone.length >= 10 && (
+                            <a
+                              href={`tel:+91${cleanPhone}`}
+                              className="inline-flex items-center justify-center h-7 w-7 rounded-md bg-blue-50 text-blue-600 hover:bg-blue-100 hover:text-blue-700 border border-blue-200"
+                              title="Call customer"
+                            >
+                              <Phone className="w-3.5 h-3.5" />
+                            </a>
+                          )}
+
+                          {/* Quote Button */}
+                          <Button
+                            size="sm"
+                            onClick={() => handleCreateQuotationForLead(lead)}
+                            className="h-7 text-[11px] bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold px-2.5"
+                            title="Generate 6-page proposal"
+                          >
+                            <FileText className="w-3 h-3 mr-1" />
+                            Quote
+                          </Button>
+
+                          {/* Edit Button */}
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => {
+                              setEditingLead(lead);
+                              setIsModalOpen(true);
+                            }}
+                            className="h-7 w-7 text-slate-600 hover:text-amber-600"
+                            title="Edit lead"
+                          >
+                            <Edit2 className="w-3.5 h-3.5" />
+                          </Button>
+
+                          {/* Delete Button */}
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleDeleteLead(lead.id, lead.customerName)}
+                            className="h-7 w-7 text-slate-600 hover:text-red-600"
+                            title="Delete lead"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })
               )}
             </TableBody>
           </Table>
         </div>
       </Card>
 
-      {/* Add / Edit Modal */}
+      {/* Lead Modal */}
       <LeadModal
         isOpen={isModalOpen}
         onClose={() => {

@@ -1,7 +1,10 @@
 ﻿/** @type {import('next').NextConfig} */
 const nextConfig = {
   experimental: {
-    serverComponentsExternalPackages: ["@react-pdf/renderer"],
+    serverComponentsExternalPackages: ["@react-pdf/renderer", "@prisma/client", "prisma"],
+    outputFileTracingIncludes: {
+      "**": ["./prisma/**/*"],
+    },
   },
   webpack: (config) => {
     config.resolve.alias.canvas = false;
