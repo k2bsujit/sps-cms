@@ -203,129 +203,179 @@ export function getDefaultTermsForBrand(brand: SolarBrand = "WAAREE"): TemplateT
   }
 }
 
+export const defaultMasterBOQItems: BOQItem[] = [
+  {
+    id: "boq-1",
+    slNo: 1,
+    section: "A",
+    description: "580 WP (DCR) Modules - Mono Half -Cut Bifacial topcon",
+    make: "Brand Selected Make",
+    uom: "Nos.",
+    qty: "Calculated from kW",
+    rating: "580 Wp",
+    warranty: "12/30 Years",
+  },
+  {
+    id: "boq-2",
+    slNo: 2,
+    section: "A",
+    description: "Module Mounting Structure - Standardized 4:3 ft leg profile with rafter–purlin layout scaled to kW-specific structural load.",
+    make: "APPOLO",
+    uom: "SET",
+    qty: 1,
+    warranty: "10 Years",
+  },
+  {
+    id: "boq-3",
+    slNo: 1,
+    section: "B",
+    description: "Solar On-grid Inverter",
+    make: "Brand Selected Make",
+    uom: "Nos.",
+    qty: 1,
+    rating: "Rating per kW",
+    warranty: "8 Years",
+  },
+  {
+    id: "boq-4",
+    slNo: 1,
+    section: "C",
+    description: "DC Cable @ 4 Sq. mm – Red & Black",
+    make: "Waacab",
+    uom: "Mtrs.",
+    qty: "30 mtr",
+    warranty: "5 Years",
+  },
+  {
+    id: "boq-5",
+    slNo: 2,
+    section: "C",
+    description: "AC Cable @ 4 Sq. mm – Red & Black",
+    make: "Waacab",
+    uom: "Mtrs.",
+    qty: "30 mtr",
+    warranty: "5 Years",
+  },
+  {
+    id: "boq-6",
+    slNo: 3,
+    section: "C",
+    description: "Earthing Cable – Green Wire @ 6 Sq. mm",
+    make: "Waacab",
+    uom: "Mtrs.",
+    qty: "Upto 40 mtr",
+    warranty: "5 Years",
+  },
+  {
+    id: "boq-7",
+    slNo: 4,
+    section: "C",
+    description: "2 in 1 Connector, MC4 Connectors",
+    make: "Waacab",
+    uom: "Set",
+    qty: "As per Requirement",
+    warranty: "5 Years",
+  },
+  {
+    id: "boq-8",
+    slNo: 5,
+    section: "C",
+    description: "DCDB & ACDB",
+    make: "Waacab",
+    uom: "Nos.",
+    qty: "1 Each",
+    warranty: "5 Years",
+  },
+  {
+    id: "boq-9",
+    slNo: 6,
+    section: "C",
+    description: "Pin & Ring Terminals",
+    make: "Dowell’s/Equivalent",
+    uom: "Set",
+    qty: "As per Requirement",
+    warranty: "Standard",
+  },
+  {
+    id: "boq-10",
+    slNo: 7,
+    section: "C",
+    description: "Earthing Electrode with Earthing Chemical",
+    make: "Forecast/Equivalent",
+    uom: "Set",
+    qty: 1,
+    warranty: "5 Years",
+  },
+  {
+    id: "boq-11",
+    slNo: 8,
+    section: "C",
+    description: "Copper Bonded Lightning Arrestor",
+    make: "Forecast/GreenRays/Equivalent",
+    uom: "Nos.",
+    qty: 1,
+    warranty: "5 Years",
+  },
+  {
+    id: "boq-12",
+    slNo: 1,
+    section: "D",
+    description: "Installation, Documentation & Commissioning",
+    make: "SP Surya Certified Team",
+    uom: "Lot",
+    qty: 1,
+    warranty: "5 Years AMC",
+  },
+];
+
 export function generateDefaultBOQList(
   capacityKw: number,
   moduleCount: number,
-  brand: SolarBrand = "WAAREE"
+  brand: SolarBrand = "WAAREE",
+  templateBOQ?: BOQItem[]
 ): BOQItem[] {
   const brandName = brand === "Other" ? "Tier 1 Approved" : brand;
   const inverterRating = capacityKw <= 3.3 ? "3.3 KW -Gen 4" : `${capacityKw} KW -Gen 4`;
 
-  return [
-    {
-      id: "boq-1",
-      slNo: 1,
-      section: "A",
-      description: `580 WP (DCR) Modules - Mono Half -Cut Bifacial topcon`,
-      make: brandName,
-      uom: "Nos.",
-      qty: moduleCount,
-      rating: "580 Wp",
-      warranty: "12/30 Years",
-    },
-    {
-      id: "boq-2",
-      slNo: 2,
-      section: "A",
-      description: `Module Mounting Structure - Standardized 4:3 ft leg profile with rafter–purlin layout scaled to kW-specific structural load.`,
-      make: "APPOLO",
-      uom: "SET",
-      qty: 1,
-      warranty: "10 Years",
-    },
-    {
-      id: "boq-3",
-      slNo: 1,
-      section: "B",
-      description: `${inverterRating} Solar On-grid Inverter`,
-      make: brandName,
-      uom: "Nos.",
-      qty: 1,
-      rating: `${inverterRating}`,
-      warranty: "8 Years",
-    },
-    {
-      id: "boq-4",
-      slNo: 1,
-      section: "C",
-      description: "DC Cable @ 4 Sq. mm – Red & Black",
-      make: "Waacab",
-      uom: "Mtrs.",
-      qty: "30 mtr",
-    },
-    {
-      id: "boq-5",
-      slNo: 2,
-      section: "C",
-      description: "AC Cable @ 4 Sq. mm – Red & Black",
-      make: "Waacab",
-      uom: "Mtrs.",
-      qty: "30 mtr",
-    },
-    {
-      id: "boq-6",
-      slNo: 3,
-      section: "C",
-      description: "Earthing Cable – Green Wire @ 6 Sq. mm",
-      make: "Waacab",
-      uom: "Mtrs.",
-      qty: "Upto 40 mtr",
-    },
-    {
-      id: "boq-7",
-      slNo: 4,
-      section: "C",
-      description: "2 in 1 Connector, MC4 Connectors",
-      make: "Waacab",
-      uom: "Set",
-      qty: "As per Requirement",
-    },
-    {
-      id: "boq-8",
-      slNo: 5,
-      section: "C",
-      description: "DCDB & ACDB",
-      make: "Waacab",
-      uom: "Nos.",
-      qty: "1 Each",
-    },
-    {
-      id: "boq-9",
-      slNo: 6,
-      section: "C",
-      description: "Pin & Ring Terminals",
-      make: "Dowell’s/Equivalent",
-      uom: "Set",
-      qty: "As per Requirement",
-    },
-    {
-      id: "boq-10",
-      slNo: 7,
-      section: "C",
-      description: "Earthing Electrode with Earthing Chemical",
-      make: "Forecast/Equivalent",
-      uom: "Set",
-      qty: 1,
-    },
-    {
-      id: "boq-11",
-      slNo: 8,
-      section: "C",
-      description: "Copper Bonded Lightning Arrestor",
-      make: "Forecast/GreenRays/Equivalent",
-      uom: "Nos.",
-      qty: 1,
-    },
-    {
-      id: "boq-12",
-      slNo: 1,
-      section: "D",
-      description: "Installation, Documentation & Commissioning",
-      make: "SP Surya Certified Team",
-      uom: "Lot",
-      qty: 1,
-    },
-  ];
+  const sourceItems: BOQItem[] = templateBOQ && templateBOQ.length > 0 ? templateBOQ : defaultMasterBOQItems;
+
+  return sourceItems.map((item, index) => {
+    // Section A: Solar module
+    if (item.section === "A" && (item.id === "boq-1" || item.description.toLowerCase().includes("module"))) {
+      return {
+        ...item,
+        id: item.id || `boq-1`,
+        description: item.description || `580 WP (DCR) Modules - Mono Half -Cut Bifacial topcon`,
+        make: brandName,
+        uom: item.uom || "Nos.",
+        qty: moduleCount,
+        rating: item.rating || "580 Wp",
+        warranty: item.warranty || "12/30 Years",
+      };
+    }
+
+    // Section B: Inverter
+    if (item.section === "B" && (item.id === "boq-3" || item.description.toLowerCase().includes("inverter"))) {
+      const baseDesc = item.description.replace(/^(\d+(\.\d+)?\s*(KW|kW)?\s*(-Gen\s*\d+)?\s*)/i, "").trim();
+      const desc = baseDesc ? `${inverterRating} ${baseDesc}` : `${inverterRating} Solar On-grid Inverter`;
+      return {
+        ...item,
+        id: item.id || `boq-3`,
+        description: desc,
+        make: brandName,
+        uom: item.uom || "Nos.",
+        qty: 1,
+        rating: `${inverterRating}`,
+        warranty: item.warranty || "8 Years",
+      };
+    }
+
+    // Other items (Structure, Cables, Connectors, Protection, Installation)
+    return {
+      ...item,
+      id: item.id || `boq-${index + 1}`,
+    };
+  });
 }
 
 export const defaultSPBankDetails: BankDetails = {

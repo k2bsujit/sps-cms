@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useMemo } from "react";
 import { useSearchParams } from "next/navigation";
+import Link from "next/link";
 import {
   PhaseType,
   QuotationData,
@@ -14,6 +15,7 @@ import {
 import {
   calculateQuotation,
   generateDefaultBOQList,
+  defaultMasterBOQItems,
   defaultSPBankDetails,
   getDefaultTermsForBrand,
 } from "@/lib/boq-calculator";
@@ -44,6 +46,7 @@ import {
   ArrowRight,
   History,
   Copy,
+  RotateCcw,
 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 
@@ -72,6 +75,7 @@ export const QuotationForm: React.FC = () => {
   const [district, setDistrict] = useState("Balasore");
   const [pin, setPin] = useState("756040");
   const [bankDetails, setBankDetails] = useState<BankDetails>(defaultSPBankDetails);
+  const [masterBOQTemplate, setMasterBOQTemplate] = useState<BOQItem[]>(defaultMasterBOQItems);
 
   // Multi-Quote Brand Variants for this customer
   const [variants, setVariants] = useState<QuoteVariant[]>([
@@ -114,8 +118,25 @@ export const QuotationForm: React.FC = () => {
     fetch("/api/settings")
       .then((res) => res.json())
       .then((settings) => {
-        if (settings && settings.bank) {
-          setBankDetails(settings.bank);
+        if (settings) {
+          if (settings.bank) {
+            setBankDetails(settings.bank);
+          }
+          if (settings.boqTemplate && Array.isArray(settings.boqTemplate) && settings.boqTemplate.length > 0) {
+            setMasterBOQTemplate(settings.boqTemplate);
+            // Apply loaded master template to initial default variants
+            setVariants((prev) =>
+              prev.map((v) => ({
+                ...v,
+                boqList: generateDefaultBOQList(
+                  v.capacityKw,
+                  Math.ceil((v.capacityKw * 1000) / 580),
+                  v.brand,
+                  settings.boqTemplate
+                ),
+              }))
+            );
+          }
         }
       })
       .catch(() => {});
@@ -202,7 +223,7 @@ export const QuotationForm: React.FC = () => {
       capacityKw: kw,
       phase: ph,
       customGrandTotal: price,
-      boqList: generateDefaultBOQList(kw, Math.ceil((kw * 1000) / 580), newBrand),
+      boqList: generateDefaultBOQList(kw, Math.ceil((kw * 1000) / 580), newBrand, masterBOQTemplate),
       terms: defaultTerms,
       demandNoteAmount: ph === "SINGLE_PHASE" ? 3747 : 4334,
       validityDays: 15,
@@ -518,7 +539,8 @@ export const QuotationForm: React.FC = () => {
                   boqList: generateDefaultBOQList(
                     currentVariant.capacityKw,
                     Math.ceil((currentVariant.capacityKw * 1000) / 580),
-                    b
+                    b,
+                    masterBOQTemplate
                   ),
                 });
               }}
@@ -545,7 +567,7 @@ export const QuotationForm: React.FC = () => {
                 const kw = parseFloat(e.target.value);
                 updateCurrentVariant({
                   capacityKw: kw,
-                  boqList: generateDefaultBOQList(kw, Math.ceil((kw * 1000) / 580), currentVariant.brand),
+                  boqList: generateDefaultBOQList(kw, Math.ceil((kw * 1000) / 580), currentVariant.brand, masterBOQTemplate),
                 });
               }}
               className="w-full h-9 rounded-lg bg-slate-800 border border-slate-700 text-white px-3 text-xs font-semibold focus:ring-2 focus:ring-amber-500"
@@ -886,31 +908,43 @@ export const QuotationForm: React.FC = () => {
       {/* TAB 2: Editable BOQ for current variant */}
       {activeTab === "BOQ" && (
         <Card className="border border-slate-200 shadow-sm bg-white">
-          <CardHeader className="border-b border-slate-100 flex flex-row items-center justify-between">
+          <CardHeader className="border-b border-slate-100 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 bg-slate-50/50">
             <div>
-              <CardTitle className="text-base font-bold text-slate-900">
-                Itemized Bill of Quantities (BOQ) for {currentVariant.brand}
-              </CardTitle>
-              <CardDescription>
-                Customize components, makes, and quantities for this specific brand proposal.
+              <div className="flex items-center gap-2">
+                <CardTitle className="text-base font-bold text-slate-900">
+                  Itemized Bill of Quantities (BOQ) for {currentVariant.brand}
+                </CardTitle>
+                <Badge variant="outline" className="text-[10px] text-amber-700 border-amber-300 bg-amber-50">
+                  Active Proposal Specific
+                </Badge>
+              </div>
+              <CardDescription className="text-xs mt-0.5">
+                Customize components, makes, and quantities for this customer. Default master values are managed in{" "}
+                <Link href="/settings" className="text-amber-700 font-bold underline hover:text-amber-800">
+                  Template & Settings
+                </Link>.
               </CardDescription>
             </div>
             <div className="flex items-center gap-2">
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() =>
-                  updateCurrentVariant({
-                    boqList: generateDefaultBOQList(
-                      currentVariant.capacityKw,
-                      currentFinancials.moduleCount,
-                      currentVariant.brand
-                    ),
-                  })
-                }
-                className="text-xs"
+                onClick={() => {
+                  if (confirm(`Reset ${currentVariant.brand} BOQ items to master template defaults?`)) {
+                    updateCurrentVariant({
+                      boqList: generateDefaultBOQList(
+                        currentVariant.capacityKw,
+                        currentFinancials.moduleCount,
+                        currentVariant.brand,
+                        masterBOQTemplate
+                      ),
+                    });
+                  }
+                }}
+                className="text-xs border-slate-300 text-slate-700 hover:bg-slate-100"
               >
-                Reset to {currentVariant.brand} Defaults
+                <RotateCcw className="w-3.5 h-3.5 mr-1 text-slate-500" />
+                Reset to Master Template Defaults
               </Button>
             </div>
           </CardHeader>

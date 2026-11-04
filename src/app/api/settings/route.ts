@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { defaultMasterBOQItems } from "@/lib/boq-calculator";
 
 export const dynamic = "force-dynamic";
 
@@ -33,6 +34,7 @@ const defaultAppSettings = {
     advancePercent: 75,
     finalPercent: 25,
   },
+  boqTemplate: defaultMasterBOQItems,
   brandTerms: {
     WAAREE: {
       inverterWarranty: "8 Years Manufacturer Warranty",
@@ -97,7 +99,11 @@ export async function GET() {
     }
 
     const parsed = JSON.parse(dbSetting.value);
-    return NextResponse.json({ ...defaultAppSettings, ...parsed });
+    return NextResponse.json({
+      ...defaultAppSettings,
+      ...parsed,
+      boqTemplate: parsed.boqTemplate && parsed.boqTemplate.length > 0 ? parsed.boqTemplate : defaultAppSettings.boqTemplate,
+    });
   } catch (error) {
     return NextResponse.json(defaultAppSettings);
   }
