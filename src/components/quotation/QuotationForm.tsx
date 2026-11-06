@@ -727,8 +727,8 @@ export const QuotationForm: React.FC = () => {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                  <div className="space-y-1 sm:col-span-2">
+                <div className="grid grid-cols-1 sm:grid-cols-12 gap-4">
+                  <div className="space-y-1 sm:col-span-6">
                     <label className="text-xs font-semibold text-slate-700">Village / Address *</label>
                     <Input
                       value={village}
@@ -737,12 +737,22 @@ export const QuotationForm: React.FC = () => {
                       required
                     />
                   </div>
-                  <div className="space-y-1">
+                  <div className="space-y-1 sm:col-span-3">
                     <label className="text-xs font-semibold text-slate-700">District *</label>
                     <Input
                       value={district}
                       onChange={(e) => setDistrict(e.target.value)}
                       placeholder="Balasore"
+                      required
+                    />
+                  </div>
+                  <div className="space-y-1 sm:col-span-3">
+                    <label className="text-xs font-semibold text-slate-700">PIN Code *</label>
+                    <Input
+                      value={pin}
+                      onChange={(e) => setPin(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                      placeholder="756040"
+                      maxLength={6}
                       required
                     />
                   </div>

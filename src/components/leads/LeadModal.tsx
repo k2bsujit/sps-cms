@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import React, { useState, useEffect } from "react";
 import { Lead, SolarBrand, SystemCategory, PhaseType, LeadStatus } from "@/types";
@@ -45,6 +45,7 @@ export const LeadModal: React.FC<Props> = ({ isOpen, onClose, onSave, initialDat
         ...initialData,
         email: initialData.email || "",
         consumerNumber: initialData.consumerNumber || "",
+        pin: initialData.pin || "756040",
         followUpDate: initialData.followUpDate ? initialData.followUpDate.split("T")[0] : "",
       });
     } else {
@@ -191,9 +192,9 @@ export const LeadModal: React.FC<Props> = ({ isOpen, onClose, onSave, initialDat
             </div>
           </div>
 
-          {/* Location & District */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <div className="space-y-1 sm:col-span-2">
+          {/* Location, District & PIN Code */}
+          <div className="grid grid-cols-1 sm:grid-cols-12 gap-3">
+            <div className="space-y-1 sm:col-span-6">
               <label className="text-xs font-semibold text-slate-700">Village / Town / Address *</label>
               <Input
                 value={formData.location || ""}
@@ -203,12 +204,23 @@ export const LeadModal: React.FC<Props> = ({ isOpen, onClose, onSave, initialDat
               />
             </div>
 
-            <div className="space-y-1">
+            <div className="space-y-1 sm:col-span-3">
               <label className="text-xs font-semibold text-slate-700">District *</label>
               <Input
                 value={formData.district || "Balasore"}
                 onChange={(e) => setFormData({ ...formData, district: e.target.value })}
                 placeholder="Balasore"
+                required
+              />
+            </div>
+
+            <div className="space-y-1 sm:col-span-3">
+              <label className="text-xs font-semibold text-slate-700">PIN Code *</label>
+              <Input
+                value={formData.pin || ""}
+                onChange={(e) => setFormData({ ...formData, pin: e.target.value.replace(/\D/g, "").slice(0, 6) })}
+                placeholder="e.g. 756040"
+                maxLength={6}
                 required
               />
             </div>
