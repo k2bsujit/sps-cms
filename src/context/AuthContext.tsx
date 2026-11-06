@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { useRouter, usePathname } from "next/navigation";
@@ -28,30 +28,65 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const pathname = usePathname();
 
   useEffect(() => {
-    // Check local storage / session on mount
+    let mounted = true;
+
+    // Safety timeout: never allow authentication check to hang
+    const safetyTimer = setTimeout(() => {
+      if (mounted) {
+        setIsLoading(false);
+      }
+    }, 1200);
+
     const checkUser = async () => {
       try {
-        const stored = localStorage.getItem("sps_user");
-        if (stored) {
-          setUser(JSON.parse(stored));
-        } else {
-          const res = await fetch("/api/auth/me");
-          if (res.ok) {
-            const data = await res.json();
-            if (data.user) {
-              setUser(data.user);
-              localStorage.setItem("sps_user", JSON.stringify(data.user));
+        if (typeof window !== "undefined") {
+          const stored = localStorage.getItem("sps_user");
+          if (stored && stored !== "undefined" && stored !== "null") {
+            try {
+              const parsed = JSON.parse(stored);
+              if (parsed && parsed.email) {
+                if (mounted) {
+                  setUser(parsed);
+                  setIsLoading(false);
+                }
+                clearTimeout(safetyTimer);
+                return;
+              }
+            } catch (e) {
+              localStorage.removeItem("sps_user");
             }
           }
         }
+
+        // Fast session check with abort controller
+        const controller = new AbortController();
+        const fetchTimer = setTimeout(() => controller.abort(), 1000);
+        const res = await fetch("/api/auth/me", { signal: controller.signal });
+        clearTimeout(fetchTimer);
+
+        if (res.ok) {
+          const data = await res.json();
+          if (data && data.user && mounted) {
+            setUser(data.user);
+            try {
+              localStorage.setItem("sps_user", JSON.stringify(data.user));
+            } catch (e) {}
+          }
+        }
       } catch (err) {
-        console.error("Auth check error:", err);
+        // Silently proceed to unauthenticated state
       } finally {
-        setIsLoading(false);
+        if (mounted) setIsLoading(false);
+        clearTimeout(safetyTimer);
       }
     };
 
     checkUser();
+
+    return () => {
+      mounted = false;
+      clearTimeout(safetyTimer);
+    };
   }, []);
 
   const login = async (email: string, password?: string): Promise<boolean> => {

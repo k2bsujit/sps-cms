@@ -48,7 +48,7 @@ export const CrmShell: React.FC<Props> = ({ children }) => {
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated && !isLoginPage) {
-      router.push("/login");
+      router.replace("/login");
     }
   }, [isLoading, isAuthenticated, isLoginPage, router]);
 
@@ -67,20 +67,104 @@ export const CrmShell: React.FC<Props> = ({ children }) => {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-950 text-white">
-        <div className="text-center space-y-4">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-amber-500 text-slate-950 animate-pulse shadow-xl">
-            <Sun className="w-10 h-10 fill-slate-950" />
+      <div
+        className="min-h-screen flex items-center justify-center bg-slate-950 text-white"
+        style={{
+          minHeight: "100vh",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          backgroundColor: "#020617",
+          color: "#ffffff",
+          fontFamily: "system-ui, -apple-system, sans-serif",
+        }}
+      >
+        <div className="text-center space-y-4" style={{ textAlign: "center" }}>
+          <div
+            className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-amber-500 text-slate-950 animate-pulse shadow-xl"
+            style={{
+              width: "64px",
+              height: "64px",
+              borderRadius: "16px",
+              backgroundColor: "#f59e0b",
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              margin: "0 auto 16px auto",
+            }}
+          >
+            <Sun style={{ width: "36px", height: "36px", color: "#020617" }} />
           </div>
-          <h2 className="text-xl font-bold tracking-tight">Authenticating SP Surya CRM...</h2>
-          <p className="text-xs text-slate-400">Loading PM Surya Ghar Customer & Quotation Pipeline</p>
+          <h2
+            className="text-xl font-bold tracking-tight text-white"
+            style={{ fontSize: "20px", fontWeight: "bold", margin: "0 0 8px 0", color: "#ffffff" }}
+          >
+            Authenticating SP Surya CRM...
+          </h2>
+          <p
+            className="text-xs text-slate-400"
+            style={{ fontSize: "12px", color: "#94a3b8", margin: 0 }}
+          >
+            Loading PM Surya Ghar Customer & Quotation Pipeline
+          </p>
         </div>
       </div>
     );
   }
 
   if (!isAuthenticated) {
-    return null;
+    return (
+      <div
+        className="min-h-screen flex items-center justify-center bg-slate-950 text-white"
+        style={{
+          minHeight: "100vh",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          backgroundColor: "#020617",
+          color: "#ffffff",
+          fontFamily: "system-ui, -apple-system, sans-serif",
+        }}
+      >
+        <div className="text-center space-y-4" style={{ textAlign: "center" }}>
+          <div
+            style={{
+              width: "56px",
+              height: "56px",
+              borderRadius: "14px",
+              backgroundColor: "#f59e0b",
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              margin: "0 auto 16px auto",
+            }}
+          >
+            <Sun style={{ width: "32px", height: "32px", color: "#020617" }} />
+          </div>
+          <h2 style={{ fontSize: "18px", fontWeight: "bold", margin: "0 0 8px 0", color: "#ffffff" }}>
+            Redirecting to Portal Sign-In...
+          </h2>
+          <p style={{ fontSize: "13px", color: "#94a3b8", marginBottom: "16px" }}>
+            Please sign in to access leads and quotations.
+          </p>
+          <a
+            href="/login"
+            style={{
+              display: "inline-block",
+              padding: "10px 24px",
+              backgroundColor: "#f59e0b",
+              color: "#020617",
+              fontWeight: "bold",
+              fontSize: "13px",
+              borderRadius: "8px",
+              textDecoration: "none",
+            }}
+          >
+            Open Sign-In Screen →
+          </a>
+        </div>
+      </div>
+    );
   }
 
   const navLinks = [
