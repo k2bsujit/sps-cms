@@ -1,4 +1,4 @@
-﻿import React from "react";
+import React from "react";
 import { Page, View, Text, Image } from "@react-pdf/renderer";
 import { styles } from "./pdfStyles";
 import { PdfHeader } from "./PdfHeader";
@@ -19,9 +19,11 @@ export const Page1Overview: React.FC<Props> = ({ data }) => {
       {/* Main Proposal Title */}
       <View style={styles.docTitleBox}>
         <Text style={styles.docTitleMain}>
-          Quotation for Installation & Commissioning Of {financials.capacityKw} KW Solar On-Grid Power Plant
+          {data.proposalTitle || `Quotation for Installation & Commissioning Of ${financials.capacityKw} KW Solar On-Grid Power Plant`}
         </Text>
-        <Text style={styles.docTitlePhase}>[{phaseLabel}]</Text>
+        {!data.proposalTitle?.toLowerCase().includes("phase") && (
+          <Text style={styles.docTitlePhase}>[{phaseLabel}]</Text>
+        )}
       </View>
 
       {/* Meta & Customer Details */}

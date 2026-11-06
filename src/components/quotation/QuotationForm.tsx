@@ -62,6 +62,58 @@ export interface QuoteVariant {
   terms: TemplateTerms;
   demandNoteAmount: number;
   validityDays: number;
+  proposalTitle?: string;
+  isCustomTitle?: boolean;
+}
+
+export function formatProposalTitle(
+  template: string | undefined,
+  capacityKw: number,
+  brand: string,
+  phase: string,
+  category: string
+): string {
+  const baseTpl =
+    template && template.trim().length > 0
+      ? template
+      : "Quotation for Installation & Commissioning Of {CAPACITY} KW Solar On-Grid Power Plant";
+
+  const phaseReadable = phase === "SINGLE_PHASE" ? "Single Phase" : "Three Phase";
+  const catReadable = category === "RESIDENTIAL" ? "Residential" : "Commercial";
+
+  return baseTpl
+    .replace(/{CAPACITY}/gi, String(capacityKw))
+    .replace(/{BRAND}/gi, brand)
+    .replace(/{PHASE}/gi, phaseReadable)
+    .replace(/{CATEGORY}/gi, catReadable);
+}
+
+export function getDefaultPriceForQuote(
+  kw: number,
+  brand: SolarBrand,
+  category: SystemCategory,
+  pricing?: any
+): number {
+  if (category === "COMMERCIAL") {
+    const rate = pricing?.commercialPerKw || 48000;
+    return kw * rate;
+  }
+  let basePrice = 200000;
+  if (kw <= 1) basePrice = pricing?.residential1Kw || 75000;
+  else if (kw <= 2) basePrice = pricing?.residential2Kw || 145000;
+  else if (kw <= 3) basePrice = pricing?.residential3Kw || 200000;
+  else if (kw <= 4) basePrice = 260000;
+  else if (kw <= 5) basePrice = 315000;
+  else if (kw <= 6) basePrice = 370000;
+  else if (kw <= 8) basePrice = 480000;
+  else if (kw <= 10) basePrice = 580000;
+  else basePrice = kw * 55000;
+
+  if (brand === "TATA Solar") basePrice = Math.round(basePrice * 1.04);
+  else if (brand === "Adani Solar") basePrice = Math.round(basePrice * 1.02);
+  else if (brand === "Eastman") basePrice = Math.round(basePrice * 0.98);
+
+  return basePrice;
 }
 export const QuotationForm: React.FC = () => {
   const searchParams = useSearchParams();
@@ -76,6 +128,10 @@ export const QuotationForm: React.FC = () => {
   const [pin, setPin] = useState("756040");
   const [bankDetails, setBankDetails] = useState<BankDetails>(defaultSPBankDetails);
   const [masterBOQTemplate, setMasterBOQTemplate] = useState<BOQItem[]>(defaultMasterBOQItems);
+  const [pricingSettings, setPricingSettings] = useState<any>(null);
+  const [proposalTitleTemplate, setProposalTitleTemplate] = useState<string>(
+    "Quotation for Installation & Commissioning Of {CAPACITY} KW Solar On-Grid Power Plant"
+  );
 
   // Multi-Quote Brand Variants for this customer
   const [variants, setVariants] = useState<QuoteVariant[]>([
@@ -91,6 +147,8 @@ export const QuotationForm: React.FC = () => {
       terms: getDefaultTermsForBrand("WAAREE"),
       demandNoteAmount: 3747,
       validityDays: 15,
+      proposalTitle: "Quotation for Installation & Commissioning Of 3 KW Solar On-Grid Power Plant",
+      isCustomTitle: false,
     },
   ]);
   const [activeVariantIndex, setActiveVariantIndex] = useState(0);
@@ -122,21 +180,37 @@ export const QuotationForm: React.FC = () => {
           if (settings.bank) {
             setBankDetails(settings.bank);
           }
+          if (settings.pricingDefaults) {
+            setPricingSettings(settings.pricingDefaults);
+            if (settings.pricingDefaults.proposalTitleTemplate) {
+              setProposalTitleTemplate(settings.pricingDefaults.proposalTitleTemplate);
+            }
+          }
           if (settings.boqTemplate && Array.isArray(settings.boqTemplate) && settings.boqTemplate.length > 0) {
             setMasterBOQTemplate(settings.boqTemplate);
-            // Apply loaded master template to initial default variants
-            setVariants((prev) =>
-              prev.map((v) => ({
-                ...v,
-                boqList: generateDefaultBOQList(
-                  v.capacityKw,
-                  Math.ceil((v.capacityKw * 1000) / 580),
-                  v.brand,
-                  settings.boqTemplate
-                ),
-              }))
-            );
           }
+
+          // Apply loaded master template and title template to initial variants
+          setVariants((prev) =>
+            prev.map((v) => {
+              const activeTpl = settings.pricingDefaults?.proposalTitleTemplate || proposalTitleTemplate;
+              return {
+                ...v,
+                boqList:
+                  settings.boqTemplate && settings.boqTemplate.length > 0
+                    ? generateDefaultBOQList(
+                        v.capacityKw,
+                        Math.ceil((v.capacityKw * 1000) / 580),
+                        v.brand,
+                        settings.boqTemplate
+                      )
+                    : v.boqList,
+                proposalTitle: v.isCustomTitle
+                  ? v.proposalTitle
+                  : formatProposalTitle(activeTpl, v.capacityKw, v.brand, v.phase, v.category),
+              };
+            })
+          );
         }
       })
       .catch(() => {});
@@ -155,6 +229,8 @@ export const QuotationForm: React.FC = () => {
       const initialKw = parseFloat(searchParams.get("capacity")!) || 3.0;
       const initialPhase = (searchParams.get("phase") as PhaseType) || "SINGLE_PHASE";
       const initialCat = (searchParams.get("category") as SystemCategory) || "RESIDENTIAL";
+      const initialPrice = getDefaultPriceForQuote(initialKw, initialBrand, initialCat);
+      const initialTitle = formatProposalTitle(proposalTitleTemplate, initialKw, initialBrand, initialPhase, initialCat);
 
       setVariants([
         {
@@ -164,11 +240,13 @@ export const QuotationForm: React.FC = () => {
           brand: initialBrand,
           capacityKw: initialKw,
           phase: initialPhase,
-          customGrandTotal: initialCat === "RESIDENTIAL" ? 200000 : initialKw * 48000,
+          customGrandTotal: initialPrice,
           boqList: generateDefaultBOQList(initialKw, Math.ceil((initialKw * 1000) / 580), initialBrand),
           terms: getDefaultTermsForBrand(initialBrand),
           demandNoteAmount: initialPhase === "SINGLE_PHASE" ? 3747 : 4334,
           validityDays: 15,
+          proposalTitle: initialTitle,
+          isCustomTitle: false,
         },
       ]);
     }
@@ -209,11 +287,9 @@ export const QuotationForm: React.FC = () => {
     const cat = currentVariant.category;
     const ph = currentVariant.phase;
 
-    // Estimate price per brand
-    let price = currentVariant.customGrandTotal;
-    if (newBrand === "TATA Solar") price = Math.round(price * 1.04);
-    else if (newBrand === "Adani Solar") price = Math.round(price * 1.02);
-    else if (newBrand === "Eastman") price = Math.round(price * 0.98);
+    // Calculate accurate price based on kW, brand, and settings
+    const price = getDefaultPriceForQuote(kw, newBrand, cat, pricingSettings);
+    const title = formatProposalTitle(proposalTitleTemplate, kw, newBrand, ph, cat);
 
     const newVariant: QuoteVariant = {
       id: `var-${Date.now()}-${nextIndex}`,
@@ -225,8 +301,10 @@ export const QuotationForm: React.FC = () => {
       customGrandTotal: price,
       boqList: generateDefaultBOQList(kw, Math.ceil((kw * 1000) / 580), newBrand, masterBOQTemplate),
       terms: defaultTerms,
-      demandNoteAmount: ph === "SINGLE_PHASE" ? 3747 : 4334,
+      demandNoteAmount: ph === "SINGLE_PHASE" ? (pricingSettings?.demandNoteSinglePhase || 3747) : (pricingSettings?.demandNoteThreePhase || 4334),
       validityDays: 15,
+      proposalTitle: title,
+      isCustomTitle: false,
     };
 
     setVariants((prev) => [...prev, newVariant]);
@@ -270,6 +348,15 @@ export const QuotationForm: React.FC = () => {
       quotationNumber: `SPS-${variant.category === "COMMERCIAL" ? "COM" : "RES"}-${today.getFullYear()}-${Math.floor(
         1000 + Math.random() * 9000
       )}`,
+      proposalTitle:
+        variant.proposalTitle ||
+        formatProposalTitle(
+          proposalTitleTemplate,
+          variant.capacityKw,
+          variant.brand,
+          variant.phase,
+          variant.category
+        ),
       date: today.toLocaleDateString("en-GB"),
       validUntil: validDate.toLocaleDateString("en-GB"),
       category: variant.category,
@@ -532,10 +619,14 @@ export const QuotationForm: React.FC = () => {
               value={currentVariant.brand}
               onChange={(e) => {
                 const b = e.target.value as SolarBrand;
+                const newPrice = getDefaultPriceForQuote(currentVariant.capacityKw, b, currentVariant.category, pricingSettings);
+                const newTitle = formatProposalTitle(proposalTitleTemplate, currentVariant.capacityKw, b, currentVariant.phase, currentVariant.category);
                 updateCurrentVariant({
                   brand: b,
                   variantLabel: `Option ${activeVariantIndex + 1}: ${b}`,
                   terms: getDefaultTermsForBrand(b),
+                  customGrandTotal: newPrice,
+                  proposalTitle: currentVariant.isCustomTitle ? currentVariant.proposalTitle : newTitle,
                   boqList: generateDefaultBOQList(
                     currentVariant.capacityKw,
                     Math.ceil((currentVariant.capacityKw * 1000) / 580),
@@ -565,8 +656,12 @@ export const QuotationForm: React.FC = () => {
               value={currentVariant.capacityKw}
               onChange={(e) => {
                 const kw = parseFloat(e.target.value);
+                const newPrice = getDefaultPriceForQuote(kw, currentVariant.brand, currentVariant.category, pricingSettings);
+                const newTitle = formatProposalTitle(proposalTitleTemplate, kw, currentVariant.brand, currentVariant.phase, currentVariant.category);
                 updateCurrentVariant({
                   capacityKw: kw,
+                  customGrandTotal: newPrice,
+                  proposalTitle: currentVariant.isCustomTitle ? currentVariant.proposalTitle : newTitle,
                   boqList: generateDefaultBOQList(kw, Math.ceil((kw * 1000) / 580), currentVariant.brand, masterBOQTemplate),
                 });
               }}
@@ -593,9 +688,11 @@ export const QuotationForm: React.FC = () => {
               value={currentVariant.phase}
               onChange={(e) => {
                 const ph = e.target.value as PhaseType;
+                const newTitle = formatProposalTitle(proposalTitleTemplate, currentVariant.capacityKw, currentVariant.brand, ph, currentVariant.category);
                 updateCurrentVariant({
                   phase: ph,
-                  demandNoteAmount: ph === "SINGLE_PHASE" ? 3747 : 4334,
+                  demandNoteAmount: ph === "SINGLE_PHASE" ? (pricingSettings?.demandNoteSinglePhase || 3747) : (pricingSettings?.demandNoteThreePhase || 4334),
+                  proposalTitle: currentVariant.isCustomTitle ? currentVariant.proposalTitle : newTitle,
                 });
               }}
               className="w-full h-9 rounded-lg bg-slate-800 border border-slate-700 text-white px-3 text-xs font-semibold focus:ring-2 focus:ring-amber-500"
@@ -611,7 +708,16 @@ export const QuotationForm: React.FC = () => {
             </label>
             <select
               value={currentVariant.category}
-              onChange={(e) => updateCurrentVariant({ category: e.target.value as SystemCategory })}
+              onChange={(e) => {
+                const cat = e.target.value as SystemCategory;
+                const newPrice = getDefaultPriceForQuote(currentVariant.capacityKw, currentVariant.brand, cat, pricingSettings);
+                const newTitle = formatProposalTitle(proposalTitleTemplate, currentVariant.capacityKw, currentVariant.brand, currentVariant.phase, cat);
+                updateCurrentVariant({
+                  category: cat,
+                  customGrandTotal: newPrice,
+                  proposalTitle: currentVariant.isCustomTitle ? currentVariant.proposalTitle : newTitle,
+                });
+              }}
               className="w-full h-9 rounded-lg bg-slate-800 border border-slate-700 text-white px-3 text-xs font-semibold focus:ring-2 focus:ring-amber-500"
             >
               <option value="RESIDENTIAL">Residential PM Surya Ghar</option>
@@ -776,6 +882,63 @@ export const QuotationForm: React.FC = () => {
                       value={currentVariant.validityDays}
                       onChange={(e) => updateCurrentVariant({ validityDays: parseInt(e.target.value) || 15 })}
                     />
+                  </div>
+                </div>
+
+                {/* Master Proposal Document Title / Heading */}
+                <div className="pt-3 border-t border-slate-200/80 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                      <FileText className="w-3.5 h-3.5 text-amber-600" />
+                      Proposal Document Title (Page 1 Header)
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const standardTitle = formatProposalTitle(
+                          proposalTitleTemplate,
+                          currentVariant.capacityKw,
+                          currentVariant.brand,
+                          currentVariant.phase,
+                          currentVariant.category
+                        );
+                        updateCurrentVariant({
+                          proposalTitle: standardTitle,
+                          isCustomTitle: false,
+                        });
+                      }}
+                      className="text-[11px] text-amber-600 hover:text-amber-800 font-medium underline"
+                    >
+                      Reset to Master Format
+                    </button>
+                  </div>
+                  <Input
+                    value={
+                      currentVariant.proposalTitle ||
+                      formatProposalTitle(
+                        proposalTitleTemplate,
+                        currentVariant.capacityKw,
+                        currentVariant.brand,
+                        currentVariant.phase,
+                        currentVariant.category
+                      )
+                    }
+                    onChange={(e) => {
+                      updateCurrentVariant({
+                        proposalTitle: e.target.value,
+                        isCustomTitle: true,
+                      });
+                    }}
+                    placeholder="e.g. Quotation for Installation & Commissioning Of 3 KW Solar On-Grid Power Plant"
+                    className="text-xs font-medium bg-amber-50/40 border-amber-300/80 text-slate-900"
+                  />
+                  <div className="flex items-center justify-between text-[11px] text-slate-500">
+                    <span>
+                      Dynamic Preview: <strong>{currentVariant.capacityKw} kW</strong> • <strong>{currentVariant.brand}</strong> • {currentVariant.phase === "SINGLE_PHASE" ? "Single Phase" : "Three Phase"}
+                    </span>
+                    <Link href="/settings" className="text-amber-700 hover:underline">
+                      Configure Master Template in Settings →
+                    </Link>
                   </div>
                 </div>
               </CardContent>

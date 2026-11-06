@@ -33,6 +33,7 @@ const defaultAppSettings = {
     tokenBookingAmount: 10000,
     advancePercent: 75,
     finalPercent: 25,
+    proposalTitleTemplate: "Quotation for Installation & Commissioning Of {CAPACITY} KW Solar On-Grid Power Plant",
   },
   boqTemplate: defaultMasterBOQItems,
   brandTerms: {
@@ -102,6 +103,13 @@ export async function GET() {
     return NextResponse.json({
       ...defaultAppSettings,
       ...parsed,
+      pricingDefaults: {
+        ...defaultAppSettings.pricingDefaults,
+        ...(parsed.pricingDefaults || {}),
+        proposalTitleTemplate:
+          parsed.pricingDefaults?.proposalTitleTemplate ||
+          defaultAppSettings.pricingDefaults.proposalTitleTemplate,
+      },
       boqTemplate: parsed.boqTemplate && parsed.boqTemplate.length > 0 ? parsed.boqTemplate : defaultAppSettings.boqTemplate,
     });
   } catch (error) {

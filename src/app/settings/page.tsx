@@ -21,6 +21,7 @@ import {
   Layers,
   Info,
   Check,
+  FileText,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -591,6 +592,101 @@ export default function SettingsPage() {
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
           {/* Commercial & Milestone Defaults */}
           <div className="lg:col-span-6 space-y-6">
+            {/* Master Proposal Heading & Title Format */}
+            <Card className="border border-amber-200 shadow-sm bg-gradient-to-br from-amber-50/30 via-white to-slate-50">
+              <CardHeader className="border-b border-amber-100 bg-amber-50/50 pb-3">
+                <CardTitle className="text-base font-bold text-slate-900 flex items-center justify-between">
+                  <span className="flex items-center gap-2">
+                    <FileText className="w-4 h-4 text-amber-600" />
+                    Master Proposal Title & Subject Format
+                  </span>
+                  <Badge variant="outline" className="bg-amber-100 text-amber-800 border-amber-300 text-[10px]">
+                    Master Entry
+                  </Badge>
+                </CardTitle>
+                <CardDescription className="text-xs text-slate-600">
+                  Global title pattern for 6-page proposals. Tokens like <code>{"{CAPACITY}"}</code>, <code>{"{BRAND}"}</code>, and <code>{"{PHASE}"}</code> are dynamically replaced per quote.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="p-5 space-y-4">
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-bold text-slate-800">Master Title Pattern</label>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setSettings({
+                          ...settings,
+                          pricingDefaults: {
+                            ...settings.pricingDefaults,
+                            proposalTitleTemplate:
+                              "Quotation for Installation & Commissioning Of {CAPACITY} KW Solar On-Grid Power Plant",
+                          },
+                        })
+                      }
+                      className="text-[11px] text-amber-600 hover:text-amber-800 font-medium underline"
+                    >
+                      Reset to Standard Pattern
+                    </button>
+                  </div>
+                  <Input
+                    value={
+                      settings.pricingDefaults?.proposalTitleTemplate ??
+                      "Quotation for Installation & Commissioning Of {CAPACITY} KW Solar On-Grid Power Plant"
+                    }
+                    onChange={(e) =>
+                      setSettings({
+                        ...settings,
+                        pricingDefaults: {
+                          ...settings.pricingDefaults,
+                          proposalTitleTemplate: e.target.value,
+                        },
+                      })
+                    }
+                    placeholder="Quotation for Installation & Commissioning Of {CAPACITY} KW Solar On-Grid Power Plant"
+                    className="font-medium text-slate-900 bg-white"
+                  />
+                </div>
+
+                <div className="bg-white/80 p-3 rounded-lg border border-slate-200 text-xs space-y-2">
+                  <span className="font-semibold text-slate-700 block">Available Dynamic Variable Tags:</span>
+                  <div className="flex flex-wrap gap-2">
+                    <span className="px-2 py-0.5 rounded bg-amber-50 text-amber-700 border border-amber-200 font-mono text-[11px]">
+                      {"{CAPACITY}"}
+                    </span>
+                    <span className="text-slate-500 self-center text-[11px] mr-2">System kW (e.g. 1, 2, 3)</span>
+
+                    <span className="px-2 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200 font-mono text-[11px]">
+                      {"{BRAND}"}
+                    </span>
+                    <span className="text-slate-500 self-center text-[11px] mr-2">Brand Make (e.g. Eastman, WAAREE)</span>
+
+                    <span className="px-2 py-0.5 rounded bg-purple-50 text-purple-700 border border-purple-200 font-mono text-[11px]">
+                      {"{PHASE}"}
+                    </span>
+                    <span className="text-slate-500 self-center text-[11px]">Single Phase / Three Phase</span>
+                  </div>
+                </div>
+
+                <div className="bg-slate-900 text-white p-3.5 rounded-lg text-xs space-y-1 shadow-inner">
+                  <div className="text-[10px] uppercase font-bold tracking-wider text-amber-400">
+                    Live Sample Preview (e.g. 1 kW Eastman):
+                  </div>
+                  <div className="text-sm font-bold text-white">
+                    {(
+                      settings.pricingDefaults?.proposalTitleTemplate ||
+                      "Quotation for Installation & Commissioning Of {CAPACITY} KW Solar On-Grid Power Plant"
+                    )
+                      .replace(/{CAPACITY}/gi, "1")
+                      .replace(/{BRAND}/gi, "Eastman")
+                      .replace(/{PHASE}/gi, "Single Phase")
+                      .replace(/{CATEGORY}/gi, "Residential")}
+                  </div>
+                  <div className="text-[11px] text-amber-300 font-medium">[Single Phase]</div>
+                </div>
+              </CardContent>
+            </Card>
+
             <Card className="border border-slate-200 shadow-sm bg-white">
               <CardHeader className="border-b border-slate-100 bg-slate-50/50">
                 <CardTitle className="text-base font-bold text-slate-900 flex items-center gap-2">

@@ -120,6 +120,7 @@ export interface QuotationData {
   assets?: PdfAssets;
   id?: string;
   quotationNumber: string;
+  proposalTitle?: string;
   date: string;
   validUntil: string;
   category: SystemCategory;
